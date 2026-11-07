@@ -22,7 +22,7 @@ const ENFORCEMENT = [
   ["A. The Church's Role", "The Church is the registrar. It records the Covenants and keeps each signed agreement for the life of the Horse. It is not a party to the Covenants and does not monitor or inspect any horse. Anyone who signed an agreement may ask for a copy of it and of the Horse's record."],
   ["B. How Long They Last", "These Covenants last for the Horse's whole life and pass to each Owner in turn. An Owner's duties end once the Horse is transferred properly through the registry."],
   ["C. Electronic Signature", "The Owner agrees that checking the box, typing their name, and clicking the agree button is their signature, with the same effect as signing on paper."],
-  ["D. Entire Agreement", "These Covenants and the Registry Terms are the whole agreement about the Horse's protections. They can only be changed through the registry."],
+  ["D. Entire Agreement", "These Covenants and the Registry Terms are the whole agreement about the Horse's protections. Changes to the Covenants can be made through the Church."],
 ];
 
 const TRANSFER_TYPES = ["Sale", "Gift", "Inheritance", "Donation", "Rehoming / Adoption", "Other"];
