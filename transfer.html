@@ -210,9 +210,9 @@ nav a.nav-record:hover{background:var(--gold-light);color:var(--purple-deep);}
 <section class="pagehead"><div class="wrap"><h1>Transfer Ownership</h1><p class="lede">The new owner starts the transfer. The current owner approves it by email, then the new owner reviews and signs the covenants and makes the $10 transfer offering.</p></div></section>
 <section><div class="wrap narrow"><div id="m" class="hidden"></div>
 <form id="f">
-<div class="field-row"><div class="field"><label for="reg_no">Horse ID <span class="req">*</span></label><input id="reg_no" required placeholder="HR-0001"></div>
+<div class="field-row id-row"><div class="field"><label for="reg_no">Horse ID <span class="req">*</span></label><input id="reg_no" required placeholder="HR-0001"></div>
 <div class="field"><label for="cur">Current owner's email on file <span class="req">*</span></label><input id="cur" type="email" required></div></div>
-<div class="field-row"><div class="field"><label for="nname">Your full name (new owner) <span class="req">*</span></label><input id="nname" required maxlength="120"></div>
+<div class="field-row name-email"><div class="field"><label for="nname">Your full name (new owner) <span class="req">*</span></label><input id="nname" required maxlength="120"></div>
 <div class="field"><label for="nemail">Your email (new owner) <span class="req">*</span></label><input id="nemail" type="email" required></div></div>
 <div class="field"><label for="ttype">Type of transfer <span class="req">*</span></label><select id="ttype" required><option>Sale</option><option>Gift</option><option>Inheritance</option><option>Donation</option><option>Rehoming / Adoption</option><option>Other</option></select></div>
 <button class="btn btn-solid" id="go" type="submit">Request Transfer</button>

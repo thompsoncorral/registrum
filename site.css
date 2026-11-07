@@ -40,3 +40,10 @@ legend{font-family:'Cinzel',serif;font-size:1.15rem;color:var(--purple-deep);mar
 .spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--gold-light);border-top-color:transparent;border-radius:50%;animation:sp 1s linear infinite;vertical-align:-3px;margin-right:8px}
 @keyframes sp{to{transform:rotate(360deg)}}
 .quote{text-align:center;font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.3rem;color:var(--purple-royal);margin:30px 0}
+/* Registrum forms: two-column rows share space; Horse ID column stays narrow so email has room */
+.field-row>div:nth-child(2){flex:1 1 0}
+.field-row>div:first-child{flex:1 1 0}
+.field-row.id-row>div:first-child{flex:0 0 150px}
+.field-row.name-email>div:first-child{flex:4 1 0}
+.field-row.name-email>div:nth-child(2){flex:5 1 0}
+@media (max-width:560px){.field-row>div,.field-row>div:first-child,.field-row>div:nth-child(2){flex:1 1 auto!important}}

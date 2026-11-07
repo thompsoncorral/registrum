@@ -10,7 +10,6 @@ const COVENANTS = [
   ["Transfers Only Through the Registry", "Ownership of the Horse may only pass to a new owner who accepts these Covenants through the America's Equines registry. Any transfer that does not follow this process is a breach of these Covenants."],
   ["Notice of Changes", "The Owner will tell the Church within 30 days if the Horse moves to a new address, is lost or stolen, dies, or is euthanized, and will keep the Owner's own contact information current with the registry."],
   ["Right of First Refusal", "Before selling or giving away the Horse, the Owner will first offer it in writing to the Horse's previous registered owner, through the America's Equines registry. The price will be one the Owner and the previous owner agree on, or, if they cannot agree, the same price offered by the new buyer. The previous owner has 14 days to accept. If they decline, do not answer, or cannot be reached at the contact information on file with the registry, the Owner may transfer the Horse to someone else under Covenant 4."],
-  ["Sanctuary Return", "If the Owner can no longer keep or care for the Horse, the Owner will return it to the Church, or to a placement the Church approves in writing, instead of selling it at auction or abandoning it. The Church will not charge to accept it."],
   ["Humane End of Life", "If the Horse must be euthanized, it will be done humanely by a licensed veterinarian, and only for the Horse's own welfare."],
   ["Standard of Care", "The Owner will provide the Horse with clean water at all times, adequate feed and forage, shelter from weather, room to move, routine hoof care, dental care, vaccinations and deworming as advised by a veterinarian, and prompt veterinary care when sick or injured."],
   ["Welfare Checks", "Once a year, and within 14 days of a reasonable request, the Owner will send the Church current photos of the Horse and, if asked, its most recent veterinary record. The Owner will allow the Church to visit the Horse at a reasonable time with 48 hours' notice."],
@@ -18,12 +17,12 @@ const COVENANTS = [
   ["Identification Kept", "The Owner will keep the Horse's microchip registered to the Owner's name and will not remove, alter, or hide any microchip, brand, or tattoo."],
 ];
 const CORE = [1, 2, 3, 4, 5];
-const OPTIONAL = [6, 7, 8, 9, 10, 11, 12];
+const OPTIONAL = [6, 7, 8, 9, 10, 11];
 
 const ENFORCEMENT = [
   ["A. Consideration", "The new Owner pays a $10 transfer fee and receives ownership of the Horse in exchange for accepting these Covenants. Both parties agree this is a fair exchange."],
   ["B. Who May Enforce", "The Church may enforce these Covenants against any Owner. Each prior Owner who accepted them, and the Owner who added any optional Covenant, is an intended third-party beneficiary and may also enforce them."],
-  ["C. Return of the Horse", "Each horse is unique and money alone cannot make up for a breach. If an Owner breaches Covenant 2, 3, 4, or 7, or a breach puts the Horse's welfare at risk, a court may order the Horse returned to the Church and may order an Owner not to sell, ship, or harm the Horse while a dispute is pending. The Owner agrees not to oppose such an order on the ground that money damages would be enough."],
+  ["C. Return of the Horse", "Each horse is unique and money alone cannot make up for a breach. If an Owner breaches Covenant 2, 3, or 4, or a breach puts the Horse's welfare at risk, a court may order the Horse returned to the Church and may order an Owner not to sell, ship, or harm the Horse while a dispute is pending. The Owner agrees not to oppose such an order on the ground that money damages would be enough."],
   ["D. Attorney's Fees", "The party who wins a lawsuit to enforce these Covenants will be paid its reasonable attorney's fees and court costs by the other side."],
   ["E. Governing Law and Court", "Arkansas law governs these Covenants. Any lawsuit will be filed in Izard County, Arkansas, unless the Church chooses to sue where the Horse is located."],
   ["F. How Long They Last", "These Covenants last for the Horse's whole life and bind each Owner in turn. An Owner's duties end once the Horse is transferred properly through the registry, except for any breach that happened while they owned it."],
