@@ -43,7 +43,7 @@ async function initHorse() {
     box.innerHTML = `<div class="record-head"><div><img id="main" src="${esc(h.photos[0] || "registrum-square.png")}" alt="${esc(h.name)}">${h.photos.length > 1 ? `<div class="thumbs">${h.photos.map((p) => `<img src="${esc(p)}" alt="">`).join("")}</div>` : ""}</div>
 <div><p class="eyebrow">Recorded in the Registrum</p><h1>${esc(h.name)}</h1><table class="facts">${rows.map((r) => `<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td></tr>`).join("")}</table>
 <div class="btns" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:20px"><a class="btn btn-solid" href="transfer.html?id=${esc(h.reg_no)}">Transfer This Horse</a><a class="btn btn-outline" href="lease.html?id=${esc(h.reg_no)}">Lease This Horse</a>${h.optional_available.length ? `<a class="btn btn-outline" href="add-covenant.html?id=${esc(h.reg_no)}">Add a Covenant</a>` : ""}</div></div></div>
-<h2 style="margin-top:44px">Covenants attached to ${esc(h.name)}</h2><p class="legal">These covenants are permanently attached to this horse and bind every owner. Anyone who acquires this horse is on notice of them. See the <a href="terms.html">Registry Terms</a> for the enforcement terms.</p>${covHtml(h.covenants)}`;
+<h2 style="margin-top:44px">Covenants attached to ${esc(h.name)}</h2><p class="legal">These covenants are permanently attached to this horse and bind every owner. Anyone who acquires this horse is on notice of them. See the <a href="terms.html">Registry Terms</a> for the agreement terms.</p>${covHtml(h.covenants)}`;
     $$(".thumbs img").forEach((t) => t.addEventListener("click", () => ($("#main").src = t.src)));
   } catch (e) {
     box.innerHTML = `<h1>Record not found</h1><p>${esc(e.message)}</p><p><a href="browse.html">Browse recorded horses</a></p>`;

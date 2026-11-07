@@ -20,14 +20,15 @@ const OPTIONAL = [6, 7, 8, 9, 10];
 
 const ENFORCEMENT = [
   ["A. Consideration", "The new Owner pays a $10 transfer fee and receives ownership of the Horse in exchange for accepting these Covenants. Both parties agree this is a fair exchange."],
-  ["B. Who May Enforce", "The Church may enforce these Covenants against any Owner. Each prior Owner who accepted them, and the Owner who added any optional Covenant, is an intended third-party beneficiary and may also enforce them."],
-  ["C. Return of the Horse", "Each horse is unique and money alone cannot make up for a breach. If an Owner breaches Covenant 2, 3, or 4, or a breach puts the Horse's welfare at risk, a court may order the Horse returned to the Church and may order an Owner not to sell, ship, or harm the Horse while a dispute is pending. The Owner agrees not to oppose such an order on the ground that money damages would be enough."],
-  ["D. Attorney's Fees", "The party who wins a lawsuit to enforce these Covenants will be paid its reasonable attorney's fees and court costs by the other side."],
-  ["E. Governing Law and Court", "Arkansas law governs these Covenants. Any lawsuit will be filed in Izard County, Arkansas, unless the Church chooses to sue where the Horse is located."],
-  ["F. How Long They Last", "These Covenants last for the Horse's whole life and bind each Owner in turn. An Owner's duties end once the Horse is transferred properly through the registry, except for any breach that happened while they owned it."],
-  ["G. Electronic Signature", "The Owner agrees that checking the box, typing their name, and clicking the agree button is their legal signature, with the same effect as signing on paper."],
-  ["H. If a Part Is Struck Down", "If a court finds any part of these Covenants unenforceable, it will be enforced as far as the law allows, and the rest stays in effect."],
-  ["I. Entire Agreement", "These Covenants and the Registry Terms are the whole agreement about the Horse's protections. They can only be changed in writing through the registry with the Church's approval."],
+  ["B. The Church's Role", "The Church is the registrar. It records the Covenants and keeps each signed agreement, but it is not a party to the Covenants, does not monitor or inspect any horse, will not take legal action to enforce the Covenants, and will not take possession of any horse. If a dispute arises, the Church will provide copies of the record and the signed agreements it holds to the people who signed them, or as required by law."],
+  ["C. Who May Enforce", "Only the people bound by or benefiting from these Covenants may enforce them. Each prior Owner who accepted them, and the Owner who added any optional Covenant, is an intended third-party beneficiary and may enforce them against a later Owner."],
+  ["D. Court Orders", "Each horse is unique and money alone cannot make up for a breach. If an Owner breaches Covenant 2, 3, or 4, or a breach puts the Horse's welfare at risk, a court may order that Owner not to sell, ship, or harm the Horse while a dispute is pending. The Owner agrees not to oppose such an order on the ground that money damages would be enough."],
+  ["E. Attorney's Fees", "In a lawsuit between the parties to enforce these Covenants, the winning party will be paid its reasonable attorney's fees and court costs by the other side."],
+  ["F. Governing Law and Court", "Arkansas law governs these Covenants. Any lawsuit between the parties will be filed in Izard County, Arkansas."],
+  ["G. How Long They Last", "These Covenants last for the Horse's whole life and bind each Owner in turn. An Owner's duties end once the Horse is transferred properly through the registry, except for any breach that happened while they owned it."],
+  ["H. Electronic Signature", "The Owner agrees that checking the box, typing their name, and clicking the agree button is their legal signature, with the same effect as signing on paper."],
+  ["I. If a Part Is Struck Down", "If a court finds any part of these Covenants unenforceable, it will be enforced as far as the law allows, and the rest stays in effect."],
+  ["J. Entire Agreement", "These Covenants and the Registry Terms are the whole agreement about the Horse's protections. They can only be changed in writing through the registry."],
 ];
 
 const TRANSFER_TYPES = ["Sale", "Gift", "Inheritance", "Donation", "Rehoming / Adoption", "Other"];
@@ -203,7 +204,7 @@ async function finalizeSession(env, ctx, session) {
 <p>Dear ${esc(h.owner_name)},</p><p>Your recording offering was received, and <strong>${esc(h.name)}</strong> is now part of the Registrum of H.O.R.S.E.S. Church as <strong>${esc(h.reg_no)}</strong>.</p>
 <p>Keep this Registrum ID and the email address you used. You will need both to add covenants or approve a transfer.</p>${btn(link, "View the Record")}
 <p><strong>Covenants attached to ${esc(h.name)}</strong> (signed by ${esc(h.owner_signature)} on ${esc(fmtDate(h.owner_signed_at))}):</p>${covenantsHtml(allCovNums(h))}
-<p><strong>Enforcement Terms</strong></p>${enforcementHtml()}`);
+<p><strong>Agreement Terms</strong></p>${enforcementHtml()}`);
       }
     }
     return { ok: true, kind: "record", reg_no: h.reg_no, name: h.name };
@@ -370,7 +371,7 @@ async function approvePost(request, env, ctx, token) {
       await queueMail(env, ctx, [t.new_owner_email], `Sign to complete your transfer — ${h.name} (${h.reg_no})`,
         `<p>Dear ${esc(t.new_owner_name)},</p><p>${esc(h.owner_name)} has approved the transfer of <strong>${esc(h.name)}</strong> (${esc(h.reg_no)}) to you.</p>
 <p>Before ownership passes to you, you must read and accept the covenants attached to this horse. They are shown in full below. Then use the button to sign and make the $10 transfer offering.</p>${btn(env.SITE_URL + "/go.html#/sign/" + st, "Review, Sign & Complete Transfer")}
-<div style="background:#F7F1E1;border:1px solid #e6dcc2;padding:14px 18px;font-size:14px"><p>${esc(agreementIntro(h))}</p><p><strong>Covenants</strong></p>${covenantsHtml(nums)}<p><strong>Enforcement Terms</strong></p>${enforcementHtml()}</div>
+<div style="background:#F7F1E1;border:1px solid #e6dcc2;padding:14px 18px;font-size:14px"><p>${esc(agreementIntro(h))}</p><p><strong>Covenants</strong></p>${covenantsHtml(nums)}<p><strong>Agreement Terms</strong></p>${enforcementHtml()}</div>
 <p style="font-size:13px;color:#6b5a7d">The transfer is not complete until you sign on the page linked above and the offering is received.</p>`);
     }
     return html(page("Transfer approved", `<h1>Thank you</h1><p>You approved the transfer of <strong>${esc(h.name)}</strong>. The new owner has been emailed and must accept the covenants and sign before the transfer is completed. You'll receive a copy of the signed agreement.</p>`));
@@ -395,7 +396,7 @@ async function signPage(env, token, msg) {
 ${msg ? `<p style="color:#9b1c1c"><strong>${esc(msg)}</strong></p>` : ""}
 <p>${esc(agreementIntro(h))}</p>
 <h2>Covenants attached to ${esc(h.name)}</h2><div class="cov">${covenantsHtml(allCovNums(h))}</div>
-<h2>Enforcement Terms</h2><div class="cov">${enforcementHtml()}</div>
+<h2>Agreement Terms</h2><div class="cov">${enforcementHtml()}</div>
 <p class="small">These are part of the <a href="${esc(env.SITE_URL)}/terms.html" target="_blank">Registry Terms</a>.</p>
 <form method="post" action="${esc(env.WORKER_URL)}/sign/${esc(token)}" id="f">
 <label class="chk"><input type="checkbox" name="agree" value="yes" id="agree"> I have read the Covenants above. I agree to be bound by them as owner of the Horse, and I understand they will follow the Horse to every future owner.</label>
@@ -416,7 +417,7 @@ async function signPost(request, env, token) {
     const name = clean(f.get("name"), 120);
     if (f.get("agree") !== "yes" || name.length < 3) return signPage(env, token, "Please check the box and type your full legal name to sign.");
     const signedAt = nowIso();
-    const snapshot = `${agreementIntro(h)}\n\nCOVENANTS\n\n${covenantsText(allCovNums(h))}\n\nENFORCEMENT TERMS\n\n${enforcementText()}\n\nI have read the Covenants above. I agree to be bound by them as owner of the Horse, and I understand they will follow the Horse to every future owner. [checked]\n\nBy clicking "I Agree – Pay $10 and Transfer" I signed this Agreement electronically, agreed to all of the Covenants above and to the Church's Registry Terms, and confirmed I am at least 18 years old.\n\nSigned: ${name}\nDate: ${fmtDate(signedAt)}\nNew owner email: ${t.new_owner_email}\nPrevious owner: ${t.prev_owner_name} (${t.prev_owner_email})\nTransfer ID: T-${t.id}`;
+    const snapshot = `${agreementIntro(h)}\n\nCOVENANTS\n\n${covenantsText(allCovNums(h))}\n\nAGREEMENT TERMS\n\n${enforcementText()}\n\nI have read the Covenants above. I agree to be bound by them as owner of the Horse, and I understand they will follow the Horse to every future owner. [checked]\n\nBy clicking "I Agree – Pay $10 and Transfer" I signed this Agreement electronically, agreed to all of the Covenants above and to the Church's Registry Terms, and confirmed I am at least 18 years old.\n\nSigned: ${name}\nDate: ${fmtDate(signedAt)}\nNew owner email: ${t.new_owner_email}\nPrevious owner: ${t.prev_owner_name} (${t.prev_owner_email})\nTransfer ID: T-${t.id}`;
     await env.DB.prepare("UPDATE transfers SET status='signed', signed_name=?, signed_at=?, signed_ip=?, signed_agent=?, agreement_snapshot=? WHERE id=? AND status='approved'")
       .bind(name, signedAt, request.headers.get("CF-Connecting-IP") || "", clean(request.headers.get("User-Agent"), 300), snapshot, t.id).run();
   }
@@ -545,7 +546,7 @@ async function leaseOwnerPost(request, env, ctx, token) {
       await queueMail(env, ctx, [l.lessee_email], `Sign to begin your lease — ${h.name} (${h.reg_no})`,
         `<p>Dear ${esc(l.lessee_name)},</p><p>${esc(l.owner_name)} has confirmed your lease of <strong>${esc(h.name)}</strong> (${esc(h.reg_no)}), ${esc(leaseTerm(l))}.</p><p><strong>Location:</strong> ${esc(leasePlace(l))}.</p>
 <p>Before the lease begins, you must read and accept the covenants attached to this horse. They are shown in full below. There is no charge.</p>${btn(env.SITE_URL + "/go.html#/ls/" + st, "Review & Sign the Lease")}
-<div style="background:#F7F1E1;border:1px solid #e6dcc2;padding:14px 18px;font-size:14px"><p>${esc(leaseIntro(h, l))}</p><p><strong>Covenants</strong></p>${covenantsHtml(allCovNums(h))}<p><strong>Enforcement Terms</strong></p>${enforcementHtml()}</div>`);
+<div style="background:#F7F1E1;border:1px solid #e6dcc2;padding:14px 18px;font-size:14px"><p>${esc(leaseIntro(h, l))}</p><p><strong>Covenants</strong></p>${covenantsHtml(allCovNums(h))}<p><strong>Agreement Terms</strong></p>${enforcementHtml()}</div>`);
     }
     return html(page("Lease confirmed", `<h1>Thank you</h1><p>You confirmed the lease of <strong>${esc(h.name)}</strong>. ${esc(l.lessee_name)} has been emailed and must sign the covenants before the lease begins. You'll receive a copy of the signed lease.</p>`));
   }
@@ -594,7 +595,7 @@ async function leaseSignPage(env, token, msg) {
 ${msg ? `<p style="color:#9b1c1c"><strong>${esc(msg)}</strong></p>` : ""}
 <p>${esc(leaseIntro(h, l))}</p>
 <h2>Covenants attached to ${esc(h.name)}</h2><div class="cov">${covenantsHtml(allCovNums(h))}</div>
-<h2>Enforcement Terms</h2><div class="cov">${enforcementHtml()}</div>
+<h2>Agreement Terms</h2><div class="cov">${enforcementHtml()}</div>
 <p class="small">These are part of the <a href="${esc(env.SITE_URL)}/terms.html" target="_blank">Registry Terms</a>.</p>
 <form method="post" action="${esc(env.WORKER_URL)}/ls/${esc(token)}">
 <label class="chk"><input type="checkbox" name="agree" value="yes" id="agree"> I have read the Covenants above. While the Horse is in my care, I agree to keep every Covenant as if I were its Owner, and I will not sell, give, sublease, or transfer the Horse.</label>
@@ -616,7 +617,7 @@ async function leaseSignPost(request, env, ctx, token) {
   const busyLease = await env.DB.prepare("SELECT id FROM leases WHERE horse_id=? AND status='active'").bind(l.horse_id).first();
   if (busyLease) return html(page("Already on lease", `<h1>This horse is already on lease</h1><p>The owner must end the current lease before this one can begin. Please contact the owner.</p>`));
   const signedAt = nowIso();
-  const snapshot = `${leaseIntro(h, l)}\n\nCOVENANTS\n\n${covenantsText(allCovNums(h))}\n\nENFORCEMENT TERMS\n\n${enforcementText()}\n\nI have read the Covenants above. While the Horse is in my care, I agree to keep every Covenant as if I were its Owner, and I will not sell, give, sublease, or transfer the Horse. [checked]\n\nBy clicking "I Agree – Sign Lease" I signed this Agreement electronically, agreed to all of the Covenants above and to the Church's Registry Terms, and confirmed I am at least 18 years old.\n\nSigned: ${name}\nDate: ${fmtDate(signedAt)}\nLessee email: ${l.lessee_email}\nOwner: ${l.owner_name} (${l.owner_email})\nLocation during lease: ${l.lease_location || "Same as the horse's current location"}\nLease ID: L-${l.id}`;
+  const snapshot = `${leaseIntro(h, l)}\n\nCOVENANTS\n\n${covenantsText(allCovNums(h))}\n\nAGREEMENT TERMS\n\n${enforcementText()}\n\nI have read the Covenants above. While the Horse is in my care, I agree to keep every Covenant as if I were its Owner, and I will not sell, give, sublease, or transfer the Horse. [checked]\n\nBy clicking "I Agree – Sign Lease" I signed this Agreement electronically, agreed to all of the Covenants above and to the Church's Registry Terms, and confirmed I am at least 18 years old.\n\nSigned: ${name}\nDate: ${fmtDate(signedAt)}\nLessee email: ${l.lessee_email}\nOwner: ${l.owner_name} (${l.owner_email})\nLocation during lease: ${l.lease_location || "Same as the horse's current location"}\nLease ID: L-${l.id}`;
   const r = await env.DB.prepare("UPDATE leases SET status='active', signed_name=?, signed_at=?, signed_ip=?, signed_agent=?, agreement_snapshot=? WHERE id=? AND status='approved'")
     .bind(name, signedAt, request.headers.get("CF-Connecting-IP") || "", clean(request.headers.get("User-Agent"), 300), snapshot, l.id).run();
   if (r.meta.changes) {
