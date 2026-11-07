@@ -86,3 +86,4 @@ CREATE TABLE IF NOT EXISTS mail (
   sent INTEGER DEFAULT 0,
   created_at TEXT DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS leases ( id INTEGER PRIMARY KEY AUTOINCREMENT, horse_id INTEGER NOT NULL, owner_name TEXT, owner_email TEXT, lessee_name TEXT, lessee_email TEXT, start_date TEXT, end_date TEXT, status TEXT DEFAULT 'awaiting_owner', owner_token TEXT UNIQUE, sign_token TEXT UNIQUE, approved_at TEXT, signed_name TEXT, signed_at TEXT, signed_ip TEXT, signed_agent TEXT, agreement_snapshot TEXT, reminders_sent INTEGER DEFAULT 0, last_reminder_at TEXT, ended_at TEXT, ended_reason TEXT, created_at TEXT DEFAULT (datetime('now')) ); CREATE INDEX IF NOT EXISTS idx_leases_horse ON leases(horse_id);

@@ -39,10 +39,10 @@ async function initHorse() {
   try {
     const h = (await getJSON("/api/horses/" + encodeURIComponent(id))).horse;
     document.title = h.name + " (" + h.reg_no + ") | America's Equines";
-    const rows = [["Registrum ID", h.reg_no], ["Barn name", h.barn_name], ["Breed", h.breed], ["Color", h.color], ["Sex", h.sex], ["Date of birth", h.dob], ["Height (hands)", h.height], ["Markings", h.markings], ["Microchip", h.microchip], ["Brand / tattoo", h.brand], ["Recorded", h.recorded_at ? new Date(h.recorded_at).toLocaleDateString("en-US", { dateStyle: "long" }) : ""]].filter((r) => r[1]);
+    const rows = [["Registrum ID", h.reg_no], ["Barn name", h.barn_name], ["Breed", h.breed], ["Color", h.color], ["Sex", h.sex], ["Date of birth", h.dob], ["Height (hands)", h.height], ["Markings", h.markings], ["Microchip", h.microchip], ["Brand / tattoo", h.brand], ["Recorded", h.recorded_at ? new Date(h.recorded_at).toLocaleDateString("en-US", { dateStyle: "long" }) : ""], ["Status", h.on_lease ? "On lease" + (h.lease_since ? " since " + new Date(h.lease_since + "T12:00:00Z").toLocaleDateString("en-US", { dateStyle: "long", timeZone: "UTC" }) : "") : ""]].filter((r) => r[1]);
     box.innerHTML = `<div class="record-head"><div><img id="main" src="${esc(h.photos[0] || "registrum-square.png")}" alt="${esc(h.name)}">${h.photos.length > 1 ? `<div class="thumbs">${h.photos.map((p) => `<img src="${esc(p)}" alt="">`).join("")}</div>` : ""}</div>
 <div><p class="eyebrow">Recorded in the Registrum</p><h1>${esc(h.name)}</h1><table class="facts">${rows.map((r) => `<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td></tr>`).join("")}</table>
-<div class="btns" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:20px"><a class="btn btn-solid" href="transfer.html?id=${esc(h.reg_no)}">Transfer This Horse</a>${h.optional_available.length ? `<a class="btn btn-outline" href="add-covenant.html?id=${esc(h.reg_no)}">Add a Covenant</a>` : ""}</div></div></div>
+<div class="btns" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:20px"><a class="btn btn-solid" href="transfer.html?id=${esc(h.reg_no)}">Transfer This Horse</a><a class="btn btn-outline" href="lease.html?id=${esc(h.reg_no)}">Lease This Horse</a>${h.optional_available.length ? `<a class="btn btn-outline" href="add-covenant.html?id=${esc(h.reg_no)}">Add a Covenant</a>` : ""}</div></div></div>
 <h2 style="margin-top:44px">Covenants attached to ${esc(h.name)}</h2><p class="legal">These covenants are permanently attached to this horse and bind every owner. Anyone who acquires this horse is on notice of them. See the <a href="terms.html">Registry Terms</a> for the enforcement terms.</p>${covHtml(h.covenants)}`;
     $$(".thumbs img").forEach((t) => t.addEventListener("click", () => ($("#main").src = t.src)));
   } catch (e) {
@@ -123,6 +123,27 @@ async function initTransfer() {
   });
 }
 
+// ----- Lease -----
+async function initLease() {
+  const id = (qp("id") || "").toUpperCase();
+  if (id) $("#reg_no").value = id;
+  const today = new Date().toLocaleDateString("en-CA");
+  $("#start").value = today;
+  const syncMin = () => { $("#end").min = $("#start").value || today; };
+  $("#start").addEventListener("change", syncMin); syncMin();
+  const b = $("#go");
+  $("#f").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!$("#f").reportValidity()) return;
+    busy(b, true);
+    try {
+      await postJSON("/api/lease", { reg_no: $("#reg_no").value.trim(), owner_email: $("#oemail").value.trim(), lessee_name: $("#lname").value.trim(), lessee_email: $("#lemail").value.trim(), start_date: $("#start").value, end_date: $("#end").value });
+      $("#f").classList.add("hidden");
+      msg($("#m"), "Lease request received. If the Horse ID and the owner's email match our records, the owner has been emailed to confirm. Once confirmed, the lessee will receive the covenants to sign, and the lease begins when they sign.", true);
+    } catch (err) { busy(b, false); msg($("#m"), err.message, false); }
+  });
+}
+
 // ----- Thank you (payment return) -----
 async function initThanks() {
   const sid = qp("sid"), box = $("#status");
@@ -153,5 +174,5 @@ async function initTerms() {
   } catch (e) {}
 }
 
-const inits = { browse: initBrowse, horse: initHorse, record: initRecord, addcov: initAddCovenant, transfer: initTransfer, thanks: initThanks, terms: initTerms };
+const inits = { browse: initBrowse, horse: initHorse, record: initRecord, addcov: initAddCovenant, transfer: initTransfer, lease: initLease, thanks: initThanks, terms: initTerms };
 document.addEventListener("DOMContentLoaded", () => { const p = document.body.dataset.page; if (inits[p]) inits[p](); });
