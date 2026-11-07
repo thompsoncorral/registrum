@@ -335,7 +335,7 @@ async function handleTransferRequest(request, env, ctx) {
     const token = uuid();
     await env.DB.prepare("INSERT INTO transfers (horse_id, transfer_type, prev_owner_name, prev_owner_email, new_owner_name, new_owner_email, approve_token) VALUES (?,?,?,?,?,?,?)")
       .bind(h.id, type, h.owner_name, h.owner_email, newName, newEmail, token).run();
-    const base = env.WORKER_URL + "/t/" + token;
+    const base = env.SITE_URL + "/go.html#/t/" + token;
     await queueMail(env, ctx, [h.owner_email], `Did you agree to transfer ${h.name} (${h.reg_no})?`,
       `<p>Dear ${esc(h.owner_name)},</p><p><strong>${esc(newName)}</strong> (${esc(newEmail)}) has asked to become the registered owner of <strong>${esc(h.name)}</strong> (${esc(h.reg_no)}) by ${esc(type.toLowerCase())}.</p>
 <p>Did you agree to this transfer? Nothing changes unless you approve.</p>${btn(base + "?a=approve", "Approve Transfer")}${btn(base + "?a=decline", "Decline")}
@@ -369,7 +369,7 @@ async function approvePost(request, env, ctx, token) {
       const nums = allCovNums(h);
       await queueMail(env, ctx, [t.new_owner_email], `Sign to complete your transfer — ${h.name} (${h.reg_no})`,
         `<p>Dear ${esc(t.new_owner_name)},</p><p>${esc(h.owner_name)} has approved the transfer of <strong>${esc(h.name)}</strong> (${esc(h.reg_no)}) to you.</p>
-<p>Before ownership passes to you, you must read and accept the covenants attached to this horse. They are shown in full below. Then use the button to sign and make the $10 transfer offering.</p>${btn(env.WORKER_URL + "/sign/" + st, "Review, Sign & Complete Transfer")}
+<p>Before ownership passes to you, you must read and accept the covenants attached to this horse. They are shown in full below. Then use the button to sign and make the $10 transfer offering.</p>${btn(env.SITE_URL + "/go.html#/sign/" + st, "Review, Sign & Complete Transfer")}
 <div style="background:#F7F1E1;border:1px solid #e6dcc2;padding:14px 18px;font-size:14px"><p>${esc(agreementIntro(h))}</p><p><strong>Covenants</strong></p>${covenantsHtml(nums)}<p><strong>Enforcement Terms</strong></p>${enforcementHtml()}</div>
 <p style="font-size:13px;color:#6b5a7d">The transfer is not complete until you sign on the page linked above and the offering is received.</p>`);
     }
@@ -463,7 +463,7 @@ const leaseTerm = (l) => `beginning ${fmtDay(l.start_date)}${l.end_date ? ` and 
 function leaseIntro(h, l) {
   return `America's Equines Lease Agreement. You are about to lease ${h.name} (Registrum ID ${h.reg_no}${h.microchip ? ", microchip " + h.microchip : ""}) ("the Horse") from ${l.owner_name}, its registered owner, ${leaseTerm(l)}. The Horse is protected by the Covenants listed below, which are recorded with H.O.R.S.E.S. Church ("the Church"). In exchange for the use and care of the Horse, you agree that while the Horse is in your care you will keep every Covenant as if you were its Owner. You will not sell, give, sublease, or otherwise transfer the Horse, and you will return it to the registered owner when the lease ends. The registered owner remains the Owner of the Horse, and only the owner can end or extend this lease through the registry.`;
 }
-const ownerLinks = (env, l) => btn(env.WORKER_URL + "/l/" + l.owner_token + "?a=extend", "Extend Lease") + btn(env.WORKER_URL + "/l/" + l.owner_token + "?a=end", "End Lease");
+const ownerLinks = (env, l) => btn(env.SITE_URL + "/go.html#/l/" + l.owner_token + "?a=extend", "Extend Lease") + btn(env.SITE_URL + "/go.html#/l/" + l.owner_token + "?a=end", "End Lease");
 
 async function handleLeaseRequest(request, env, ctx) {
   const b = await request.json().catch(() => ({}));
@@ -482,14 +482,14 @@ async function handleLeaseRequest(request, env, ctx) {
     const active = await env.DB.prepare("SELECT * FROM leases WHERE horse_id=? AND status='active'").bind(h.id).first();
     if (active) {
       await queueMail(env, ctx, [h.owner_email], `${h.name} is already on lease (${h.reg_no})`,
-        `<p>Dear ${esc(h.owner_name)},</p><p>Someone asked to add <strong>${esc(lesseeName)}</strong> (${esc(lesseeEmail)}) as a lessee of <strong>${esc(h.name)}</strong> (${esc(h.reg_no)}), but ${esc(h.name)} is already leased to ${esc(active.lessee_name)}. A horse can have only one lease at a time.</p><p>If you want to start a new lease, first end the current one, then add the new lessee again.</p>${btn(env.WORKER_URL + "/l/" + active.owner_token + "?a=end", "End Current Lease")}`);
+        `<p>Dear ${esc(h.owner_name)},</p><p>Someone asked to add <strong>${esc(lesseeName)}</strong> (${esc(lesseeEmail)}) as a lessee of <strong>${esc(h.name)}</strong> (${esc(h.reg_no)}), but ${esc(h.name)} is already leased to ${esc(active.lessee_name)}. A horse can have only one lease at a time.</p><p>If you want to start a new lease, first end the current one, then add the new lessee again.</p>${btn(env.SITE_URL + "/go.html#/l/" + active.owner_token + "?a=end", "End Current Lease")}`);
       return json({ ok: true }, 200, env);
     }
     await env.DB.prepare("UPDATE leases SET status='canceled' WHERE horse_id=? AND status IN ('awaiting_owner','approved')").bind(h.id).run();
     const token = uuid();
     await env.DB.prepare("INSERT INTO leases (horse_id, owner_name, owner_email, lessee_name, lessee_email, start_date, end_date, owner_token) VALUES (?,?,?,?,?,?,?,?)")
       .bind(h.id, h.owner_name, h.owner_email, lesseeName, lesseeEmail, start, end || null, token).run();
-    const base = env.WORKER_URL + "/l/" + token;
+    const base = env.SITE_URL + "/go.html#/l/" + token;
     await queueMail(env, ctx, [h.owner_email], `Confirm the lease of ${h.name} (${h.reg_no})`,
       `<p>Dear ${esc(h.owner_name)},</p><p>A request was made to add <strong>${esc(lesseeName)}</strong> (${esc(lesseeEmail)}) as the lessee of <strong>${esc(h.name)}</strong> (${esc(h.reg_no)}), ${esc(leaseTerm({ start_date: start, end_date: end }))}.</p>
 <p>You remain the registered owner. If you confirm, the lessee must read and sign the horse's covenants before the lease begins. There is no charge.</p>${btn(base + "?a=confirm", "Confirm Lease")}${btn(base + "?a=decline", "Decline")}
@@ -539,7 +539,7 @@ async function leaseOwnerPost(request, env, ctx, token) {
     if (r.meta.changes) {
       await queueMail(env, ctx, [l.lessee_email], `Sign to begin your lease — ${h.name} (${h.reg_no})`,
         `<p>Dear ${esc(l.lessee_name)},</p><p>${esc(l.owner_name)} has confirmed your lease of <strong>${esc(h.name)}</strong> (${esc(h.reg_no)}), ${esc(leaseTerm(l))}.</p>
-<p>Before the lease begins, you must read and accept the covenants attached to this horse. They are shown in full below. There is no charge.</p>${btn(env.WORKER_URL + "/ls/" + st, "Review & Sign the Lease")}
+<p>Before the lease begins, you must read and accept the covenants attached to this horse. They are shown in full below. There is no charge.</p>${btn(env.SITE_URL + "/go.html#/ls/" + st, "Review & Sign the Lease")}
 <div style="background:#F7F1E1;border:1px solid #e6dcc2;padding:14px 18px;font-size:14px"><p>${esc(leaseIntro(h, l))}</p><p><strong>Covenants</strong></p>${covenantsHtml(allCovNums(h))}<p><strong>Enforcement Terms</strong></p>${enforcementHtml()}</div>`);
     }
     return html(page("Lease confirmed", `<h1>Thank you</h1><p>You confirmed the lease of <strong>${esc(h.name)}</strong>. ${esc(l.lessee_name)} has been emailed and must sign the covenants before the lease begins. You'll receive a copy of the signed lease.</p>`));
@@ -563,7 +563,7 @@ async function leaseOwnerPost(request, env, ctx, token) {
     await queueMail(env, ctx, [l.lessee_email], `Lease extended — ${h.name} (${h.reg_no})`,
       `<p>Dear ${esc(l.lessee_name)},</p><p>${esc(l.owner_name)} has extended your lease of <strong>${esc(h.name)}</strong> (${esc(h.reg_no)}). The lease ${esc(what)}. The covenants you signed continue to apply.</p>`);
     await queueMail(env, ctx, [l.owner_email], `Lease extended — ${h.name} (${h.reg_no})`,
-      `<p>Dear ${esc(l.owner_name)},</p><p>The lease of <strong>${esc(h.name)}</strong> to ${esc(l.lessee_name)} ${esc(what)}. ${esc(l.lessee_name)} has been notified.</p><p>You can end the lease at any time:</p>${btn(env.WORKER_URL + "/l/" + l.owner_token + "?a=end", "End Lease")}`);
+      `<p>Dear ${esc(l.owner_name)},</p><p>The lease of <strong>${esc(h.name)}</strong> to ${esc(l.lessee_name)} ${esc(what)}. ${esc(l.lessee_name)} has been notified.</p><p>You can end the lease at any time:</p>${btn(env.SITE_URL + "/go.html#/l/" + l.owner_token + "?a=end", "End Lease")}`);
     return html(page("Lease extended", `<h1>Lease extended</h1><p>The lease of <strong>${esc(h.name)}</strong> ${esc(what)}. ${esc(l.lessee_name)} has been notified.</p>`));
   }
   if (a === "end") {
