@@ -509,7 +509,7 @@ export default {
       if (m) {
         const row = await env.DB.prepare("SELECT * FROM mail WHERE id=? AND sent=0 AND created_at > datetime('now','-2 hours')").bind(m[1]).first();
         if (!row) return json({ error: "not found" }, 404, env);
-        if (m[2]) { await env.DB.prepare("UPDATE mail SET sent=1 WHERE id=?").bind(m[1]).run(); return json({ ok: true }, 200, env); }
+        if (m[2] || request.method === "POST") { await env.DB.prepare("UPDATE mail SET sent=1 WHERE id=?").bind(m[1]).run(); return json({ ok: true }, 200, env); }
         return json({ to: row.to_list, subject: row.subject, html: row.html }, 200, env);
       }
       if (p.startsWith("/admin")) {
