@@ -460,8 +460,9 @@ const addDays = (d, n) => { const x = new Date(d + "T12:00:00Z"); x.setUTCDate(x
 const isDay = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || "") && !isNaN(new Date(s + "T12:00:00Z"));
 const fmtDay = (d) => (d ? new Date(d + "T12:00:00Z").toLocaleDateString("en-US", { dateStyle: "long", timeZone: "UTC" }) : "");
 const leaseTerm = (l) => `beginning ${fmtDay(l.start_date)}${l.end_date ? ` and ending ${fmtDay(l.end_date)}` : ", with no set end date, until the owner ends the lease"}`;
+const leasePlace = (l) => l.lease_location ? `During the lease the Horse will be kept at a different location: ${l.lease_location}` : "The Horse will stay at its current location during the lease";
 function leaseIntro(h, l) {
-  return `America's Equines Lease Agreement. You are about to lease ${h.name} (Registrum ID ${h.reg_no}${h.microchip ? ", microchip " + h.microchip : ""}) ("the Horse") from ${l.owner_name}, its registered owner, ${leaseTerm(l)}. The Horse is protected by the Covenants listed below, which are recorded with H.O.R.S.E.S. Church ("the Church"). In exchange for the use and care of the Horse, you agree that while the Horse is in your care you will keep every Covenant as if you were its Owner. You will not sell, give, sublease, or otherwise transfer the Horse, and you will return it to the registered owner when the lease ends. The registered owner remains the Owner of the Horse, and only the owner can end or extend this lease through the registry.`;
+  return `America's Equines Lease Agreement. You are about to lease ${h.name} (Registrum ID ${h.reg_no}${h.microchip ? ", microchip " + h.microchip : ""}) ("the Horse") from ${l.owner_name}, its registered owner, ${leaseTerm(l)}. The Horse is protected by the Covenants listed below, which are recorded with H.O.R.S.E.S. Church ("the Church"). In exchange for the use and care of the Horse, you agree that while the Horse is in your care you will keep every Covenant as if you were its Owner. You will not sell, give, sublease, or otherwise transfer the Horse, and you will return it to the registered owner when the lease ends. ${l.lease_location ? `You will keep the Horse at ${l.lease_location} during the lease, and you will tell the registered owner and the Church within 30 days if the Horse is moved anywhere else. ` : `The Horse will stay at its current location during the lease, and you will tell the registered owner and the Church within 30 days if the Horse is moved. `}The registered owner remains the Owner of the Horse, and only the owner can end or extend this lease through the registry.`;
 }
 const ownerLinks = (env, l) => btn(env.SITE_URL + "/go.html#/l/" + l.owner_token + "?a=extend", "Extend Lease") + btn(env.SITE_URL + "/go.html#/l/" + l.owner_token + "?a=end", "End Lease");
 
@@ -472,6 +473,9 @@ async function handleLeaseRequest(request, env, ctx) {
   const lesseeName = clean(b.lessee_name, 120);
   const start = clean(b.start_date, 10);
   const end = clean(b.end_date, 10);
+  const moves = b.moves === true || b.moves === "yes";
+  const leaseLocation = moves ? clean(b.lease_location, 1000) : "";
+  if (moves && leaseLocation.length < 5) return json({ error: "Please enter the address where the horse will be kept during the lease." }, 400, env);
   if (!lesseeName || !isEmail(lesseeEmail) || !isEmail(ownerEmail)) return json({ error: "Please fill in every field with a valid email address." }, 400, env);
   if (lesseeEmail === ownerEmail) return json({ error: "The lessee's email must be different from the owner's email." }, 400, env);
   if (!isDay(start)) return json({ error: "Please choose a lease start date." }, 400, env);
@@ -487,11 +491,12 @@ async function handleLeaseRequest(request, env, ctx) {
     }
     await env.DB.prepare("UPDATE leases SET status='canceled' WHERE horse_id=? AND status IN ('awaiting_owner','approved')").bind(h.id).run();
     const token = uuid();
-    await env.DB.prepare("INSERT INTO leases (horse_id, owner_name, owner_email, lessee_name, lessee_email, start_date, end_date, owner_token) VALUES (?,?,?,?,?,?,?,?)")
-      .bind(h.id, h.owner_name, h.owner_email, lesseeName, lesseeEmail, start, end || null, token).run();
+    await env.DB.prepare("INSERT INTO leases (horse_id, owner_name, owner_email, lessee_name, lessee_email, start_date, end_date, owner_token, lease_location) VALUES (?,?,?,?,?,?,?,?,?)")
+      .bind(h.id, h.owner_name, h.owner_email, lesseeName, lesseeEmail, start, end || null, token, leaseLocation || null).run();
     const base = env.SITE_URL + "/go.html#/l/" + token;
     await queueMail(env, ctx, [h.owner_email], `Confirm the lease of ${h.name} (${h.reg_no})`,
       `<p>Dear ${esc(h.owner_name)},</p><p>A request was made to add <strong>${esc(lesseeName)}</strong> (${esc(lesseeEmail)}) as the lessee of <strong>${esc(h.name)}</strong> (${esc(h.reg_no)}), ${esc(leaseTerm({ start_date: start, end_date: end }))}.</p>
+<p><strong>Location:</strong> ${esc(leasePlace({ lease_location: leaseLocation }))}.</p>
 <p>You remain the registered owner. If you confirm, the lessee must read and sign the horse's covenants before the lease begins. There is no charge.</p>${btn(base + "?a=confirm", "Confirm Lease")}${btn(base + "?a=decline", "Decline")}
 <p style="font-size:13px;color:#6b5a7d">If you did not make this request, click Decline or ignore this email. Nothing changes unless you confirm.</p>`);
   }
@@ -511,7 +516,7 @@ async function leaseOwnerPage(env, token, action, msg) {
   if (action === "confirm" || action === "decline") {
     if (l.status !== "awaiting_owner") return leaseGone();
     if (action === "decline") return html(page("Decline lease", `<h1>Decline This Lease</h1><p>You chose to <span class="a">decline</span> the lease of <strong>${esc(l.horse_name)}</strong> (${esc(l.reg_no)}) to <strong>${esc(l.lessee_name)}</strong>.</p>${form("decline", "", "Decline Lease")}`));
-    return html(page("Confirm lease", `<h1>Confirm This Lease</h1>${err}<p>You are leasing <strong>${esc(l.horse_name)}</strong> (${esc(l.reg_no)}) to <strong>${esc(l.lessee_name)}</strong> (${esc(l.lessee_email)}), ${esc(leaseTerm(l))}.</p>
+    return html(page("Confirm lease", `<h1>Confirm This Lease</h1>${err}<p>You are leasing <strong>${esc(l.horse_name)}</strong> (${esc(l.reg_no)}) to <strong>${esc(l.lessee_name)}</strong> (${esc(l.lessee_email)}), ${esc(leaseTerm(l))}.</p><p><strong>Location:</strong> ${esc(leasePlace(l))}.</p>
 ${form("confirm", `<label class="chk"><input type="checkbox" name="sc" value="yes" required> I confirm I am the registered owner of the Horse. I remain its owner during the lease, and the lessee must sign the Covenants before I hand over the Horse.</label>`, "Confirm Lease")}`));
   }
   if (!["approved", "active"].includes(l.status)) return leaseGone();
@@ -538,7 +543,7 @@ async function leaseOwnerPost(request, env, ctx, token) {
     const r = await env.DB.prepare("UPDATE leases SET status='approved', approved_at=?, sign_token=? WHERE id=? AND status='awaiting_owner'").bind(nowIso(), st, l.id).run();
     if (r.meta.changes) {
       await queueMail(env, ctx, [l.lessee_email], `Sign to begin your lease — ${h.name} (${h.reg_no})`,
-        `<p>Dear ${esc(l.lessee_name)},</p><p>${esc(l.owner_name)} has confirmed your lease of <strong>${esc(h.name)}</strong> (${esc(h.reg_no)}), ${esc(leaseTerm(l))}.</p>
+        `<p>Dear ${esc(l.lessee_name)},</p><p>${esc(l.owner_name)} has confirmed your lease of <strong>${esc(h.name)}</strong> (${esc(h.reg_no)}), ${esc(leaseTerm(l))}.</p><p><strong>Location:</strong> ${esc(leasePlace(l))}.</p>
 <p>Before the lease begins, you must read and accept the covenants attached to this horse. They are shown in full below. There is no charge.</p>${btn(env.SITE_URL + "/go.html#/ls/" + st, "Review & Sign the Lease")}
 <div style="background:#F7F1E1;border:1px solid #e6dcc2;padding:14px 18px;font-size:14px"><p>${esc(leaseIntro(h, l))}</p><p><strong>Covenants</strong></p>${covenantsHtml(allCovNums(h))}<p><strong>Enforcement Terms</strong></p>${enforcementHtml()}</div>`);
     }
@@ -569,7 +574,7 @@ async function leaseOwnerPost(request, env, ctx, token) {
   if (a === "end") {
     const r = await env.DB.prepare("UPDATE leases SET status='ended', ended_at=?, ended_reason='ended by owner' WHERE id=? AND status IN ('approved','active')").bind(nowIso(), l.id).run();
     if (r.meta.changes) {
-      const body = (n) => `<p>Dear ${esc(n)},</p><p>The lease of <strong>${esc(h.name)}</strong> (${esc(h.reg_no)}) to ${esc(l.lessee_name)} was ended by the owner on ${esc(fmtDate(nowIso()))}.</p><p>The horse's covenants remain attached to the horse and continue to bind its owner.</p>`;
+      const body = (n) => `<p>Dear ${esc(n)},</p><p>The lease of <strong>${esc(h.name)}</strong> (${esc(h.reg_no)}) to ${esc(l.lessee_name)} was ended by the owner on ${esc(fmtDate(nowIso()))}.</p>${l.lease_location ? `<p>During the lease the horse was kept at ${esc(l.lease_location)}. If the horse is now somewhere else, please let us know where at info@horseschurch.org.</p>` : ""}<p>The horse's covenants remain attached to the horse and continue to bind its owner.</p>`;
       await queueMail(env, ctx, [l.lessee_email], `Lease ended — ${h.name} (${h.reg_no})`, body(l.lessee_name));
       await queueMail(env, ctx, [l.owner_email], `Lease ended — ${h.name} (${h.reg_no})`, body(l.owner_name));
     }
@@ -611,7 +616,7 @@ async function leaseSignPost(request, env, ctx, token) {
   const busyLease = await env.DB.prepare("SELECT id FROM leases WHERE horse_id=? AND status='active'").bind(l.horse_id).first();
   if (busyLease) return html(page("Already on lease", `<h1>This horse is already on lease</h1><p>The owner must end the current lease before this one can begin. Please contact the owner.</p>`));
   const signedAt = nowIso();
-  const snapshot = `${leaseIntro(h, l)}\n\nCOVENANTS\n\n${covenantsText(allCovNums(h))}\n\nENFORCEMENT TERMS\n\n${enforcementText()}\n\nI have read the Covenants above. While the Horse is in my care, I agree to keep every Covenant as if I were its Owner, and I will not sell, give, sublease, or transfer the Horse. [checked]\n\nBy clicking "I Agree – Sign Lease" I signed this Agreement electronically, agreed to all of the Covenants above and to the Church's Registry Terms, and confirmed I am at least 18 years old.\n\nSigned: ${name}\nDate: ${fmtDate(signedAt)}\nLessee email: ${l.lessee_email}\nOwner: ${l.owner_name} (${l.owner_email})\nLease ID: L-${l.id}`;
+  const snapshot = `${leaseIntro(h, l)}\n\nCOVENANTS\n\n${covenantsText(allCovNums(h))}\n\nENFORCEMENT TERMS\n\n${enforcementText()}\n\nI have read the Covenants above. While the Horse is in my care, I agree to keep every Covenant as if I were its Owner, and I will not sell, give, sublease, or transfer the Horse. [checked]\n\nBy clicking "I Agree – Sign Lease" I signed this Agreement electronically, agreed to all of the Covenants above and to the Church's Registry Terms, and confirmed I am at least 18 years old.\n\nSigned: ${name}\nDate: ${fmtDate(signedAt)}\nLessee email: ${l.lessee_email}\nOwner: ${l.owner_name} (${l.owner_email})\nLocation during lease: ${l.lease_location || "Same as the horse's current location"}\nLease ID: L-${l.id}`;
   const r = await env.DB.prepare("UPDATE leases SET status='active', signed_name=?, signed_at=?, signed_ip=?, signed_agent=?, agreement_snapshot=? WHERE id=? AND status='approved'")
     .bind(name, signedAt, request.headers.get("CF-Connecting-IP") || "", clean(request.headers.get("User-Agent"), 300), snapshot, l.id).run();
   if (r.meta.changes) {
@@ -665,7 +670,7 @@ async function adminCsv(env, table) {
 async function adminPage(env) {
   const hs = (await env.DB.prepare("SELECT id, reg_no, name, owner_name, owner_email, status, offering_cents, paid_at, created_at FROM horses ORDER BY id DESC LIMIT 200").all()).results;
   const ts = (await env.DB.prepare("SELECT t.id, h.reg_no, t.prev_owner_email, t.new_owner_name, t.new_owner_email, t.status, t.signed_name, t.created_at FROM transfers t JOIN horses h ON h.id=t.horse_id ORDER BY t.id DESC LIMIT 200").all()).results;
-  const ls = (await env.DB.prepare("SELECT l.id, h.reg_no, l.owner_email, l.lessee_name, l.lessee_email, l.start_date, l.end_date, l.status, l.signed_name, l.created_at FROM leases l JOIN horses h ON h.id=l.horse_id ORDER BY l.id DESC LIMIT 200").all()).results;
+  const ls = (await env.DB.prepare("SELECT l.id, h.reg_no, l.owner_email, l.lessee_name, l.lessee_email, l.start_date, l.end_date, l.lease_location, l.status, l.signed_name, l.created_at FROM leases l JOIN horses h ON h.id=l.horse_id ORDER BY l.id DESC LIMIT 200").all()).results;
   const table = (rows) => rows.length ? `<table style="border-collapse:collapse;font-size:14px;width:100%"><tr>${Object.keys(rows[0]).map((k) => `<th style="text-align:left;border-bottom:2px solid #C9A227;padding:6px">${esc(k)}</th>`).join("")}</tr>${rows.map((r) => `<tr>${Object.values(r).map((v) => `<td style="border-bottom:1px solid #e6dcc2;padding:6px">${esc(v)}</td>`).join("")}</tr>`).join("")}</table>` : "<p>None yet.</p>";
   return html(page("Registrum Admin", `<h1>Registrum Admin</h1><p>Download for Excel: <a href="/admin/export/horses">Horses</a> · <a href="/admin/export/transfers">Transfers</a> · <a href="/admin/export/ownership">Ownership history</a> · <a href="/admin/export/covenants">Added covenants</a> · <a href="/admin/export/leases">Leases</a></p><h2>Horses</h2>${table(hs)}<h2>Transfers</h2>${table(ts)}<h2>Leases</h2>${table(ls)}`).replace("max-width:760px", "max-width:1200px"));
 }

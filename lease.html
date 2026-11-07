@@ -217,6 +217,8 @@ nav a.nav-record:hover{background:var(--gold-light);color:var(--purple-deep);}
 <div class="field-row"><div class="field"><label for="start">Lease start date <span class="req">*</span></label><input id="start" type="date" required></div>
 <div class="field"><label for="end">Lease end date (optional)</label><input id="end" type="date"></div></div>
 <p class="help">Leave the end date blank for an open lease. If you set an end date, you'll get a reminder 7 days before it to extend or end the lease. The lease stays active until you end it.</p>
+<label class="agree" style="font-weight:400"><input type="checkbox" id="moves"> The horse will be kept at a different location during the lease.</label>
+<div class="field hidden" id="locwrap"><label for="lloc">Address where the horse will be kept during the lease <span class="req">*</span></label><textarea id="lloc" maxlength="1000" style="min-height:80px" placeholder="Street address, city, state, ZIP"></textarea><p class="help">Kept private. Only the owner, the lessee, and the Church see this address.</p></div>
 <button class="btn btn-solid" id="go" type="submit">Add Lessee</button>
 <p class="legal" style="margin-top:14px">We'll email the owner to confirm. Then the lessee receives the covenants to sign. Nothing changes until both steps are done.</p>
 </form></div></section>

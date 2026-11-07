@@ -131,13 +131,15 @@ async function initLease() {
   $("#start").value = today;
   const syncMin = () => { $("#end").min = $("#start").value || today; };
   $("#start").addEventListener("change", syncMin); syncMin();
+  const syncLoc = () => { const on = $("#moves").checked; $("#locwrap").classList.toggle("hidden", !on); $("#lloc").required = on; };
+  $("#moves").addEventListener("change", syncLoc); syncLoc();
   const b = $("#go");
   $("#f").addEventListener("submit", async (e) => {
     e.preventDefault();
     if (!$("#f").reportValidity()) return;
     busy(b, true);
     try {
-      await postJSON("/api/lease", { reg_no: $("#reg_no").value.trim(), owner_email: $("#oemail").value.trim(), lessee_name: $("#lname").value.trim(), lessee_email: $("#lemail").value.trim(), start_date: $("#start").value, end_date: $("#end").value });
+      await postJSON("/api/lease", { moves: $("#moves").checked, lease_location: $("#moves").checked ? $("#lloc").value.trim() : "", reg_no: $("#reg_no").value.trim(), owner_email: $("#oemail").value.trim(), lessee_name: $("#lname").value.trim(), lessee_email: $("#lemail").value.trim(), start_date: $("#start").value, end_date: $("#end").value });
       $("#f").classList.add("hidden");
       msg($("#m"), "Lease request received. If the Horse ID and the owner's email match our records, the owner has been emailed to confirm. Once confirmed, the lessee will receive the covenants to sign, and the lease begins when they sign.", true);
     } catch (err) { busy(b, false); msg($("#m"), err.message, false); }
