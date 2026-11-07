@@ -12,12 +12,11 @@ const COVENANTS = [
   ["Right of First Refusal", "Before selling or giving away the Horse, the Owner will first offer it in writing to the Horse's previous registered owner, through the America's Equines registry. The price will be one the Owner and the previous owner agree on, or, if they cannot agree, the same price offered by the new buyer. The previous owner has 14 days to accept. If they decline, do not answer, or cannot be reached at the contact information on file with the registry, the Owner may transfer the Horse to someone else under Covenant 4."],
   ["Humane End of Life", "If the Horse must be euthanized, it will be done humanely by a licensed veterinarian, and only for the Horse's own welfare."],
   ["Standard of Care", "The Owner will provide the Horse with clean water at all times, adequate feed and forage, shelter from weather, room to move, routine hoof care, dental care, vaccinations and deworming as advised by a veterinarian, and prompt veterinary care when sick or injured."],
-  ["Welfare Checks", "Once a year, and within 14 days of a reasonable request, the Owner will send the Church current photos of the Horse and, if asked, its most recent veterinary record. The Owner will allow the Church to visit the Horse at a reasonable time with 48 hours' notice."],
   ["Retirement", "The Horse will not be ridden, driven, raced, or worked beyond what a veterinarian considers safe for its age and condition. Once retired by a veterinarian, it will live out its life as a companion horse."],
   ["Identification Kept", "The Owner will keep the Horse's microchip registered to the Owner's name and will not remove, alter, or hide any microchip, brand, or tattoo."],
 ];
 const CORE = [1, 2, 3, 4, 5];
-const OPTIONAL = [6, 7, 8, 9, 10, 11];
+const OPTIONAL = [6, 7, 8, 9, 10];
 
 const ENFORCEMENT = [
   ["A. Consideration", "The new Owner pays a $10 transfer fee and receives ownership of the Horse in exchange for accepting these Covenants. Both parties agree this is a fair exchange."],
