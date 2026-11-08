@@ -3,6 +3,6 @@
 <body><div><h1 style="font-weight:normal">Opening your Registrum page…</h1><p id="t">One moment.</p></div>
 <script>
 (function(){var API="https://registrum.eve-868.workers.dev";var p=decodeURIComponent(location.hash.slice(1));
-if(/^\/(t|sign|l|ls)\/[0-9a-f-]{36}(\?a=[a-z]+)?$/.test(p)){location.replace(API+p);}
+if(/^\/(t|sign|l|ls|cu)\/[0-9a-f-]{36}(\?a=[a-z]+)?$/.test(p)){location.replace(API+p);}
 else{document.getElementById("t").innerHTML='This link is not valid. Please use the button in your email again, or write to <a href="mailto:info@horseschurch.org">info@horseschurch.org</a>.';}})();
 </script></body></html>

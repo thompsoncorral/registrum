@@ -95,11 +95,11 @@ async function createCheckout(env, { name, cents, email, ref, metadata, successU
 }
 
 // ---------- email (sent by Make from the church Outlook account) ----------
-async function queueMail(env, ctx, to, subject, bodyHtml) {
+async function queueMail(env, ctx, to, subject, bodyHtml, shell = emailShell) {
   const list = [...new Set(to.filter(isEmail))];
   for (const addr of list) {
     const id = uuid();
-    await env.DB.prepare("INSERT INTO mail (id, to_list, subject, html) VALUES (?, ?, ?, ?)").bind(id, addr, subject, emailShell(bodyHtml)).run();
+    await env.DB.prepare("INSERT INTO mail (id, to_list, subject, html) VALUES (?, ?, ?, ?)").bind(id, addr, subject, shell(bodyHtml)).run();
     if (env.MAKE_MAIL_HOOK) {
       const p = fetch(env.MAKE_MAIL_HOOK + (env.MAKE_MAIL_HOOK.includes("?") ? "&" : "?") + "id=" + id).catch(() => {});
       ctx ? ctx.waitUntil(p) : await p;
@@ -447,6 +447,7 @@ async function reconcile(env, ctx) {
   }
   await env.DB.prepare("DELETE FROM mail WHERE created_at < datetime('now','-30 days')").run();
   try { await leaseReminders(env, ctx); } catch (e) {}
+  try { await churchAnniversaryRun(env, ctx); } catch (e) {}
 }
 
 // ---------- H.O.R.S.E.S. Church donations with thank-you gifts (horseschurch.org Donate page) ----------
@@ -482,11 +483,78 @@ async function handleChurchGift(request, env) {
     cancel_url: "https://horseschurch.org/donate.html#thank-you-gifts",
     "payment_intent_data[description]": name + " — " + tax,
     "metadata[kind]": "church_gift", "metadata[gift]": gift, "metadata[shirt_size]": size, "metadata[hat_color]": color,
-    "payment_intent_data[metadata][gift]": gift, "payment_intent_data[metadata][shirt_size]": size, "payment_intent_data[metadata][hat_color]": color,
+    "payment_intent_data[metadata][kind]": "church_gift", "payment_intent_data[metadata][gift]": gift, "payment_intent_data[metadata][shirt_size]": size, "payment_intent_data[metadata][hat_color]": color,
   };
   if (gift !== "none") { p["shipping_address_collection[allowed_countries][0]"] = "US"; p["phone_number_collection[enabled]"] = "false"; }
   const session = await stripe(env, "POST", "checkout/sessions", p);
   return json({ url: session.url }, 200, env);
+}
+
+// ---------- one-year thank-you emails for one-time church gifts (Donorbox + gift form; never Registrum fees) ----------
+function churchShell(inner) {
+  return `<div style="font-family:Georgia,serif;color:#2A1B3D;max-width:640px;margin:0 auto;line-height:1.55;font-size:15px">
+<div style="border-top:5px solid #C9A227;padding:20px 0 6px"><div style="font-family:Georgia,serif;letter-spacing:.08em;font-size:13px;color:#4B2578">H.O.R.S.E.S. CHURCH</div></div>
+${inner}
+<p style="margin-top:28px;font-size:13px;color:#6b5a7d">Questions? Write to info@horseschurch.org.</p></div>`;
+}
+async function churchDonorTables(env) {
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS church_gifts (pi TEXT PRIMARY KEY, email TEXT, first_name TEXT, amount_cents INTEGER, source TEXT, given_at TEXT, remind_at TEXT, reminded INTEGER DEFAULT 0, token TEXT)").run();
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS church_unsub (email TEXT PRIMARY KEY, at TEXT)").run();
+}
+async function collectChurchGifts(env) {
+  const since = Math.floor(Date.now() / 1000) - 7 * 86400;
+  let after = null;
+  for (let page = 0; page < 10; page++) {
+    const q = { "created[gte]": since, limit: 100, "expand[0]": "data.latest_charge" };
+    if (after) q.starting_after = after;
+    const res = await stripe(env, "GET", "payment_intents", q);
+    for (const pi of res.data) {
+      if (pi.status !== "succeeded") continue;
+      const ch = pi.latest_charge && typeof pi.latest_charge === "object" ? pi.latest_charge : {};
+      if (ch.refunded || ch.amount_refunded > 0) continue;
+      const md = { ...(ch.metadata || {}), ...(pi.metadata || {}) };
+      let source = null;
+      if (md.donorbox_campaign) { if (String(md.donorbox_recurring_donation) === "true") continue; source = "donorbox"; }
+      else if (md.gift && GIFTS[md.gift]) source = "gift_form";
+      else continue; // Registrum fees and anything else are skipped
+      const bd = ch.billing_details || {};
+      const email = lowerEmail(md.donorbox_email || bd.email || pi.receipt_email || ch.receipt_email || "");
+      if (!isEmail(email)) continue;
+      const first = clean(md.donorbox_first_name || String(bd.name || "").split(" ")[0] || "", 60);
+      const given = new Date(pi.created * 1000);
+      const remind = new Date(given.getTime() + 365 * 86400e3);
+      await env.DB.prepare("INSERT OR IGNORE INTO church_gifts (pi, email, first_name, amount_cents, source, given_at, remind_at, token) VALUES (?,?,?,?,?,?,?,?)")
+        .bind(pi.id, email, first, pi.amount_received || pi.amount, source, given.toISOString(), remind.toISOString(), uuid()).run();
+    }
+    if (!res.has_more || !res.data.length) break;
+    after = res.data[res.data.length - 1].id;
+  }
+}
+async function sendChurchAnniversaries(env, ctx) {
+  const { results } = await env.DB.prepare("SELECT * FROM church_gifts WHERE reminded=0 AND remind_at <= ? AND email NOT IN (SELECT email FROM church_unsub) ORDER BY remind_at LIMIT 50").bind(nowIso()).all();
+  for (const g of results) {
+    const r = await env.DB.prepare("UPDATE church_gifts SET reminded=1 WHERE pi=? AND reminded=0").bind(g.pi).run();
+    if (!r.meta.changes) continue;
+    const unsub = env.SITE_URL + "/go.html#/cu/" + g.token;
+    await queueMail(env, ctx, [g.email], "One year ago, you gave to H.O.R.S.E.S. Church",
+      `<p>Dear ${esc(g.first_name || "Friend")},</p>
+<p>One year ago today, you made a gift to H.O.R.S.E.S. Church. Thank you so much for your generosity. Your support has helped care for the horses in our ministry and share the healing that comes from time in their presence.</p>
+<p>We're grateful to have you with us. If you'd like to make this an annual tradition, you can give again here:</p>
+${btn("https://horseschurch.org/donate.html", "Give Again")}
+<p>With gratitude,<br>H.O.R.S.E.S. Church</p>
+<p style="font-size:12px;color:#8a7a9c">Don't want yearly reminders? <a href="${unsub}" style="color:#8a7a9c">Stop these emails</a>.</p>`, churchShell);
+  }
+}
+async function churchUnsub(env, token) {
+  await churchDonorTables(env);
+  const g = await env.DB.prepare("SELECT email FROM church_gifts WHERE token=?").bind(token).first();
+  if (g) await env.DB.prepare("INSERT OR IGNORE INTO church_unsub (email, at) VALUES (?, ?)").bind(g.email, nowIso()).run();
+  return html(page("Reminders stopped", `<h1>You're all set</h1><p>You won't receive any more yearly reminder emails from H.O.R.S.E.S. Church. Thank you for your support.</p>`));
+}
+async function churchAnniversaryRun(env, ctx) {
+  await churchDonorTables(env);
+  await collectChurchGifts(env);
+  await sendChurchAnniversaries(env, ctx);
 }
 
 // ---------- leases (owner stays owner; lessee signs covenants; only the owner ends it) ----------
@@ -749,6 +817,8 @@ export default {
       if (m) return request.method === "POST" ? await leaseOwnerPost(request, env, ctx, m[1]) : await leaseOwnerPage(env, m[1], url.searchParams.get("a"));
       m = /^\/ls\/([0-9a-f-]{36})$/.exec(p);
       if (m) return request.method === "POST" ? await leaseSignPost(request, env, ctx, m[1]) : await leaseSignPage(env, m[1]);
+      m = /^\/cu\/([0-9a-f-]{36})$/.exec(p);
+      if (m) return await churchUnsub(env, m[1]);
       m = /^\/mail\/([0-9a-f-]{36})(\/sent)?$/.exec(p);
       if (m) {
         const row = await env.DB.prepare("SELECT * FROM mail WHERE id=? AND sent=0 AND created_at > datetime('now','-2 hours')").bind(m[1]).first();
@@ -758,6 +828,12 @@ export default {
       }
       if (p.startsWith("/admin")) {
         if (!adminAuth(request, env)) return new Response("Login required", { status: 401, headers: { "WWW-Authenticate": 'Basic realm="Registrum Admin"' } });
+        if (p === "/admin/church-gifts") {
+          await churchDonorTables(env); await collectChurchGifts(env);
+          const rows = (await env.DB.prepare("SELECT first_name, email, amount_cents/100.0 AS amount, source, substr(given_at,1,10) AS given, substr(remind_at,1,10) AS reminder_date, reminded FROM church_gifts ORDER BY given_at DESC LIMIT 500").all()).results;
+          const t = rows.length ? "<table border=1 cellpadding=6 style=\"border-collapse:collapse;font-size:14px\"><tr>" + Object.keys(rows[0]).map((k) => "<th>" + esc(k) + "</th>").join("") + "</tr>" + rows.map((r) => "<tr>" + Object.values(r).map((v) => "<td>" + esc(v) + "</td>").join("") + "</tr>").join("") + "</table>" : "<p>No one-time church gifts in the last 7 days yet.</p>";
+          return html(page("Church gifts", "<h1>One-year thank-you list</h1><p>One-time church gifts (Donorbox and the gift form). Each donor gets a thank-you email on the reminder date.</p>" + t));
+        }
         m = /^\/admin\/export\/(\w+)$/.exec(p);
         if (m) return await adminCsv(env, m[1]);
         return await adminPage(env);
