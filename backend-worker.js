@@ -464,6 +464,7 @@ async function handleChurchGift(request, env) {
   const size = needSize ? String(b.size || "") : "", color = needColor ? String(b.color || "") : "";
   if (needSize && !SHIRT_SIZES.includes(size)) return json({ error: "Please choose a shirt size." }, 400, env);
   if (needColor && !HAT_COLORS.includes(color)) return json({ error: "Please choose a hat color." }, 400, env);
+  const letter = b.letter === true || b.letter === "yes" ? "yes" : "no";
   const details = [GIFTS[gift].label, size && "Size " + size, color && "Hat color " + color].filter(Boolean).join(" | ");
   const FMV = { none: 0, shirt: 2800, hat: 0, both: 5300 };
   const usd = (c) => "$" + (c / 100).toFixed(2);
@@ -483,7 +484,7 @@ async function handleChurchGift(request, env) {
     cancel_url: "https://horseschurch.org/donate.html#thank-you-gifts",
     "payment_intent_data[description]": name + " — " + tax,
     "metadata[kind]": "church_gift", "metadata[gift]": gift, "metadata[shirt_size]": size, "metadata[hat_color]": color,
-    "payment_intent_data[metadata][kind]": "church_gift", "payment_intent_data[metadata][gift]": gift, "payment_intent_data[metadata][shirt_size]": size, "payment_intent_data[metadata][hat_color]": color,
+    "metadata[letter]": letter, "payment_intent_data[metadata][letter]": letter, "payment_intent_data[metadata][kind]": "church_gift", "payment_intent_data[metadata][gift]": gift, "payment_intent_data[metadata][shirt_size]": size, "payment_intent_data[metadata][hat_color]": color,
   };
   if (gift !== "none") { p["shipping_address_collection[allowed_countries][0]"] = "US"; p["phone_number_collection[enabled]"] = "false"; }
   const session = await stripe(env, "POST", "checkout/sessions", p);
@@ -500,6 +501,7 @@ ${inner}
 async function churchDonorTables(env) {
   await env.DB.prepare("CREATE TABLE IF NOT EXISTS church_gifts (pi TEXT PRIMARY KEY, email TEXT, first_name TEXT, amount_cents INTEGER, source TEXT, given_at TEXT, remind_at TEXT, reminded INTEGER DEFAULT 0, token TEXT)").run();
   await env.DB.prepare("CREATE TABLE IF NOT EXISTS church_unsub (email TEXT PRIMARY KEY, at TEXT)").run();
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS church_letter (email TEXT PRIMARY KEY, name TEXT, source TEXT, signed_up_at TEXT)").run();
 }
 async function collectChurchGifts(env) {
   const since = Math.floor(Date.now() / 1000) - 7 * 86400;
@@ -522,6 +524,7 @@ async function collectChurchGifts(env) {
       if (!isEmail(email)) continue;
       const first = clean(md.donorbox_first_name || String(bd.name || "").split(" ")[0] || "", 60);
       const given = new Date(pi.created * 1000);
+      if (md.letter === "yes") await env.DB.prepare("INSERT OR IGNORE INTO church_letter (email, name, source, signed_up_at) VALUES (?,?,?,?)").bind(email, clean(md.donorbox_name || bd.name || "", 120), "gift form", given.toISOString()).run();
       const remind = new Date(given.getTime() + 365 * 86400e3);
       await env.DB.prepare("INSERT OR IGNORE INTO church_gifts (pi, email, first_name, amount_cents, source, given_at, remind_at, token) VALUES (?,?,?,?,?,?,?,?)")
         .bind(pi.id, email, first, pi.amount_received || pi.amount, source, given.toISOString(), remind.toISOString(), uuid()).run();
@@ -763,8 +766,9 @@ function adminAuth(request, env) {
 }
 const csvCell = (v) => { const s = String(v ?? ""); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
 async function adminCsv(env, table) {
-  const allowed = { horses: "SELECT * FROM horses ORDER BY id", transfers: "SELECT * FROM transfers ORDER BY id", ownership: "SELECT * FROM ownership ORDER BY horse_id, id", covenants: "SELECT * FROM covenant_log ORDER BY id", leases: "SELECT * FROM leases ORDER BY id" };
+  const allowed = { horses: "SELECT * FROM horses ORDER BY id", transfers: "SELECT * FROM transfers ORDER BY id", ownership: "SELECT * FROM ownership ORDER BY horse_id, id", covenants: "SELECT * FROM covenant_log ORDER BY id", leases: "SELECT * FROM leases ORDER BY id", church_letter: "SELECT name, email, source, substr(signed_up_at,1,10) AS signed_up FROM church_letter ORDER BY signed_up_at" };
   if (!allowed[table]) return new Response("Unknown table", { status: 400 });
+  if (table === "church_letter") await churchDonorTables(env);
   const { results } = await env.DB.prepare(allowed[table]).all();
   const cols = results.length ? Object.keys(results[0]) : [];
   const body = "﻿" + [cols.join(","), ...results.map((r) => cols.map((c) => csvCell(r[c])).join(","))].join("\r\n");
@@ -828,6 +832,12 @@ export default {
       }
       if (p.startsWith("/admin")) {
         if (!adminAuth(request, env)) return new Response("Login required", { status: 401, headers: { "WWW-Authenticate": 'Basic realm="Registrum Admin"' } });
+        if (p === "/admin/church-letter") {
+          await churchDonorTables(env); await collectChurchGifts(env);
+          const rows = (await env.DB.prepare("SELECT name, email, source, substr(signed_up_at,1,10) AS signed_up FROM church_letter ORDER BY signed_up_at DESC").all()).results;
+          const t = rows.length ? "<table border=1 cellpadding=6 style=\"border-collapse:collapse;font-size:14px\"><tr><th>Name</th><th>Email</th><th>From</th><th>Signed up</th></tr>" + rows.map((r) => "<tr><td>" + esc(r.name) + "</td><td>" + esc(r.email) + "</td><td>" + esc(r.source) + "</td><td>" + esc(r.signed_up) + "</td></tr>").join("") + "</table>" : "<p>No sign-ups yet.</p>";
+          return html(page("Church letter list", "<h1>Monthly church letter sign-ups</h1><p><a href=\"/admin/export/church_letter\">Download for Excel</a></p>" + t));
+        }
         if (p === "/admin/church-gifts") {
           await churchDonorTables(env); await collectChurchGifts(env);
           const rows = (await env.DB.prepare("SELECT first_name, email, amount_cents/100.0 AS amount, source, substr(given_at,1,10) AS given, substr(remind_at,1,10) AS reminder_date, reminded FROM church_gifts ORDER BY given_at DESC LIMIT 500").all()).results;
