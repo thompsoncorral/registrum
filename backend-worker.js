@@ -464,6 +464,11 @@ async function handleChurchGift(request, env) {
   if (needSize && !SHIRT_SIZES.includes(size)) return json({ error: "Please choose a shirt size." }, 400, env);
   if (needColor && !HAT_COLORS.includes(color)) return json({ error: "Please choose a hat color." }, 400, env);
   const details = [GIFTS[gift].label, size && "Size " + size, color && "Hat color " + color].filter(Boolean).join(" | ");
+  const FMV = { none: 0, shirt: 2800, hat: 0, both: 5300 };
+  const usd = (c) => "$" + (c / 100).toFixed(2);
+  const tax = gift === "none" ? "No goods or services were provided in exchange for this gift."
+    : gift === "hat" ? "Your thank-you gift is a token item of insubstantial value. The full " + usd(cents) + " is tax-deductible."
+    : "Goods provided: " + GIFTS[gift].label + ", fair market value " + usd(FMV[gift]) + ". Tax-deductible amount: " + usd(cents - FMV[gift]) + ".";
   const name = gift === "none" ? "Gift to H.O.R.S.E.S. Church" : "Gift to H.O.R.S.E.S. Church (thank-you gift: " + details + ")";
   const p = {
     mode: "payment", submit_type: "donate",
@@ -471,9 +476,11 @@ async function handleChurchGift(request, env) {
     "line_items[0][price_data][currency]": "usd",
     "line_items[0][price_data][unit_amount]": cents,
     "line_items[0][price_data][product_data][name]": name,
+    "line_items[0][price_data][product_data][description]": tax,
+    "custom_text[submit][message]": tax,
     success_url: "https://horseschurch.org/thank-you.html",
     cancel_url: "https://horseschurch.org/donate.html#thank-you-gifts",
-    "payment_intent_data[description]": name,
+    "payment_intent_data[description]": name + " — " + tax,
     "metadata[kind]": "church_gift", "metadata[gift]": gift, "metadata[shirt_size]": size, "metadata[hat_color]": color,
     "payment_intent_data[metadata][gift]": gift, "payment_intent_data[metadata][shirt_size]": size, "payment_intent_data[metadata][hat_color]": color,
   };
