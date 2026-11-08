@@ -467,7 +467,7 @@ async function handleChurchGift(request, env) {
   const FMV = { none: 0, shirt: 2800, hat: 0, both: 5300 };
   const usd = (c) => "$" + (c / 100).toFixed(2);
   const tax = gift === "none" ? "No goods or services were provided in exchange for this gift."
-    : gift === "hat" ? "Your thank-you gift is a token item of insubstantial value. The full " + usd(cents) + " is tax-deductible."
+    : gift === "hat" ? "Thank you for your generosity. The full " + usd(cents) + " is tax-deductible."
     : "Goods provided: " + GIFTS[gift].label + ", fair market value " + usd(FMV[gift]) + ". Tax-deductible amount: " + usd(cents - FMV[gift]) + ".";
   const name = gift === "none" ? "Gift to H.O.R.S.E.S. Church" : "Gift to H.O.R.S.E.S. Church (thank-you gift: " + details + ")";
   const p = {
