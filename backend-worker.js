@@ -13,7 +13,7 @@ const COVENANTS = [
   ["Humane End of Life", "If the Horse must be euthanized, it will be done humanely by a licensed veterinarian, and only for the Horse's own welfare."],
   ["Standard of Care", "The Owner will provide the Horse with clean water at all times, adequate feed and forage, shelter from weather, room to move, routine hoof care, dental care, vaccinations and deworming as advised by a veterinarian, and prompt veterinary care when sick or injured."],
   ["Retirement", "The Horse will not be ridden, driven, raced, or worked beyond what a veterinarian considers safe for its age and condition. Once retired by a veterinarian, it will live out its life as a companion horse."],
-  ["Identification Kept", "The Owner will keep the Horse's microchip registered to the Owner's name and will not remove, alter, or hide any microchip, brand, or tattoo."],
+  ["Identification Kept", "If the Horse has a microchip, the Owner will keep the Horse's microchip registered to the Owner's name and will not remove, alter, or hide any microchip, brand, or tattoo."],
 ];
 const CORE = [1, 2, 3, 4, 5];
 const OPTIONAL = [6, 7, 8, 9, 10];
