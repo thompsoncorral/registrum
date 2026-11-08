@@ -449,6 +449,39 @@ async function reconcile(env, ctx) {
   try { await leaseReminders(env, ctx); } catch (e) {}
 }
 
+// ---------- H.O.R.S.E.S. Church donations with thank-you gifts (horseschurch.org Donate page) ----------
+const GIFTS = { none: { min: 100, label: "" }, shirt: { min: 7200, label: "The Church T-Shirt" }, hat: { min: 7200, label: "The Church Hat" }, both: { min: 15000, label: "The Church T-Shirt & Hat" } };
+const SHIRT_SIZES = ["S", "M", "L", "XL", "2XL", "3XL"];
+const HAT_COLORS = ["Heather Gray & Black", "Khaki", "Pink", "Orange & Khaki", "Silver", "White"];
+async function handleChurchGift(request, env) {
+  const b = await request.json().catch(() => ({}));
+  const gift = GIFTS[b.gift] ? b.gift : "none";
+  const cents = Math.round(Number(b.amount) * 100);
+  if (!Number.isFinite(cents) || cents < GIFTS[gift].min) return json({ error: `The minimum gift for this choice is $${GIFTS[gift].min / 100}.` }, 400, env);
+  if (cents > 5000000) return json({ error: "For gifts over $50,000, please write to info@horseschurch.org." }, 400, env);
+  const needSize = gift === "shirt" || gift === "both", needColor = gift === "hat" || gift === "both";
+  const size = needSize ? String(b.size || "") : "", color = needColor ? String(b.color || "") : "";
+  if (needSize && !SHIRT_SIZES.includes(size)) return json({ error: "Please choose a shirt size." }, 400, env);
+  if (needColor && !HAT_COLORS.includes(color)) return json({ error: "Please choose a hat color." }, 400, env);
+  const details = [GIFTS[gift].label, size && "Size " + size, color && "Hat color " + color].filter(Boolean).join(" | ");
+  const name = gift === "none" ? "Gift to H.O.R.S.E.S. Church" : "Gift to H.O.R.S.E.S. Church (thank-you gift: " + details + ")";
+  const p = {
+    mode: "payment", submit_type: "donate",
+    "line_items[0][quantity]": 1,
+    "line_items[0][price_data][currency]": "usd",
+    "line_items[0][price_data][unit_amount]": cents,
+    "line_items[0][price_data][product_data][name]": name,
+    success_url: "https://horseschurch.org/thank-you.html",
+    cancel_url: "https://horseschurch.org/donate.html#thank-you-gifts",
+    "payment_intent_data[description]": name,
+    "metadata[kind]": "church_gift", "metadata[gift]": gift, "metadata[shirt_size]": size, "metadata[hat_color]": color,
+    "payment_intent_data[metadata][gift]": gift, "payment_intent_data[metadata][shirt_size]": size, "payment_intent_data[metadata][hat_color]": color,
+  };
+  if (gift !== "none") { p["shipping_address_collection[allowed_countries][0]"] = "US"; p["phone_number_collection[enabled]"] = "false"; }
+  const session = await stripe(env, "POST", "checkout/sessions", p);
+  return json({ url: session.url }, 200, env);
+}
+
 // ---------- leases (owner stays owner; lessee signs covenants; only the owner ends it) ----------
 const chicagoToday = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
 const addDays = (d, n) => { const x = new Date(d + "T12:00:00Z"); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
@@ -693,6 +726,7 @@ export default {
       if (p === "/api/covenants/add" && request.method === "POST") return await handleAddCovenant(request, env, ctx);
       if (p === "/api/transfer" && request.method === "POST") return await handleTransferRequest(request, env, ctx);
       if (p === "/api/lease" && request.method === "POST") return await handleLeaseRequest(request, env, ctx);
+      if (p === "/api/church-gift" && request.method === "POST") return await handleChurchGift(request, env);
       if (p === "/api/confirm") return await handleConfirm(env, ctx, url.searchParams.get("sid"));
       m = /^\/photo\/(h\/\d+\/[A-Za-z0-9._-]+)$/.exec(p);
       if (m) {
