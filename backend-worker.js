@@ -466,10 +466,10 @@ async function handleChurchGift(request, env) {
   if (needColor && !HAT_COLORS.includes(color)) return json({ error: "Please choose a hat color." }, 400, env);
   const letter = b.letter === true || b.letter === "yes" ? "yes" : "no";
   const details = [GIFTS[gift].label, size && "Size " + size, color && "Hat color " + color].filter(Boolean).join(" | ");
-  const FMV = { none: 0, shirt: 2800, hat: 0, both: 5300 };
+  const FMV = { none: 0, shirt: 0, hat: 0, both: 5300 };
   const usd = (c) => "$" + (c / 100).toFixed(2);
   const tax = gift === "none" ? "Thank you for your generosity. The full " + usd(cents) + " is tax-deductible."
-    : gift === "hat" ? "Thank you for your generosity. The full " + usd(cents) + " is tax-deductible."
+    : (gift === "hat" || gift === "shirt") ? "Thank you for your generosity. The full " + usd(cents) + " is tax-deductible."
     : "Thank you for your generosity. Your thank-you gift (" + GIFTS[gift].label + ") has a fair market value of " + usd(FMV[gift]) + ", so " + usd(cents - FMV[gift]) + " of your " + usd(cents) + " gift is tax-deductible.";
   const name = gift === "none" ? "Gift to H.O.R.S.E.S. Church" : "Gift to H.O.R.S.E.S. Church (thank-you gift: " + details + ")";
   const p = {
