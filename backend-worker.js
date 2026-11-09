@@ -480,7 +480,7 @@ async function handleChurchGift(request, env) {
     "line_items[0][price_data][product_data][name]": name,
     "line_items[0][price_data][product_data][description]": tax,
     "custom_text[submit][message]": tax,
-    success_url: "https://horseschurch.org/thank-you.html",
+    success_url: "https://horseschurch.org/gift-thank-you.html",
     cancel_url: "https://horseschurch.org/donate.html#thank-you-gifts",
     "payment_intent_data[description]": name + " — " + tax,
     "metadata[kind]": "church_gift", "metadata[gift]": gift, "metadata[shirt_size]": size, "metadata[hat_color]": color,
